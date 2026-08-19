@@ -1,0 +1,3 @@
+STATE A p=5v9
+STATE B p=5v9
+MERGE A B

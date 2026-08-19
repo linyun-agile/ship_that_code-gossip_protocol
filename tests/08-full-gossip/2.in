@@ -1,0 +1,6 @@
+JOIN A none
+SET A x 5
+JOIN B none
+ROUND
+ROUND
+STATUS

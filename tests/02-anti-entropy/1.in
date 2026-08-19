@@ -1,0 +1,3 @@
+STATE A x=1v1 y=2v3
+STATE B x=2v2 y=2v2 z=3v1
+MERGE A B

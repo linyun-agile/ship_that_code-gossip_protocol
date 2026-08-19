@@ -1,0 +1,3 @@
+STATE A a=1v1
+STATE B b=2v1
+MERGE A B

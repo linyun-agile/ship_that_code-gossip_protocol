@@ -1,0 +1,4 @@
+UPDATE alice 1 alive
+UPDATE alice 2 suspect
+UPDATE alice 1 alive
+LIST

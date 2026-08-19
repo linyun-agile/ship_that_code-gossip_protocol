@@ -1,0 +1,3 @@
+STATE A m=9v2 n=1v1 o=7v4
+STATE B m=3v5 n=1v1 p=2v2
+MERGE A B

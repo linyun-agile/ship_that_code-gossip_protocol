@@ -1,0 +1,42 @@
+{
+  "course": "build-gossip-protocol",
+  "language": "c",
+  "language_id": 50,
+  "entrypoint": "main.c",
+  "version": 1,
+  "content_hash": "b50b11f7c8f2a027",
+  "lessons": [
+    {
+      "slug": "why-gossip",
+      "tests_hash": "37f4ddc252c6"
+    },
+    {
+      "slug": "anti-entropy",
+      "tests_hash": "722b22827b93"
+    },
+    {
+      "slug": "membership",
+      "tests_hash": "63fbec87a544"
+    },
+    {
+      "slug": "swim",
+      "tests_hash": "8fe5d76cb1e2"
+    },
+    {
+      "slug": "phi-accrual",
+      "tests_hash": "64ba9c185403"
+    },
+    {
+      "slug": "convergence",
+      "tests_hash": "186cc2ad3bf4"
+    },
+    {
+      "slug": "applications",
+      "tests_hash": "37441b7de5ad"
+    },
+    {
+      "slug": "full-gossip",
+      "tests_hash": "6337844cdcca"
+    }
+  ]
+}
