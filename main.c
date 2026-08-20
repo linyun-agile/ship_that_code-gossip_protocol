@@ -1,130 +1,126 @@
+#include <ctype.h>
+#include <math.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <ctype.h>
 
-/* TODO (swim): implement per the lesson description. */
+#define MAX_INTERVAL_COUNT 200
+#define MAX_NODE_COUNT 64
+#define DEFAULT_MEAN 1000.0
+#define DEFAULT_STDDEV 200.0
 
-
-#define MAX_NODE_COUNT 100
-
-typedef struct{
-    int id;
-    int block_list[MAX_NODE_COUNT];
-    int block_count;
-    int is_up;
-    char status[10];
+typedef struct {
+    char name;
+    int intervals[MAX_INTERVAL_COUNT];
+    int interval_count;
+    int last_arrival_time;
+    int has_arrival;
+    double mean;
+    double stddev;
 } Node;
 
-Node global_nodes[MAX_NODE_COUNT + 1];
-int global_node_count = 0;
+static Node nodes[MAX_NODE_COUNT];
+static int node_count = 0;
 
-int direct_ping(const Node *a, const Node *b){
-    if (!a->is_up || !b->is_up) {
-        return 0;
-    }
-
-    for (int i = 0; i < a->block_count; i++){
-        if (a->block_list[i] == b->id){
-            return 0;
+static int find_node_index(char name) {
+    for (int i = 0; i < node_count; i++) {
+        if (nodes[i].name == name) {
+            return i;
         }
     }
-    return 1;
+    return -1;
 }
 
-int indirect_or_direct_ping(int a, int b, int* helper_nodes, int helper_count){
-    if (direct_ping(&global_nodes[a], &global_nodes[b])){
-        return 1;
+static int find_or_create_node_index(char name) {
+    int index = find_node_index(name);
+    if (index >= 0) {
+        return index;
     }
 
-    for (int i = 0; i < helper_count; i++){
-        if (direct_ping(&global_nodes[helper_nodes[i]], &global_nodes[b])){
-            return 1;
+    if (node_count == MAX_NODE_COUNT) {
+        return -1;
+    }
+
+    nodes[node_count] = (Node){
+        .name = name,
+        .mean = DEFAULT_MEAN,
+        .stddev = DEFAULT_STDDEV,
+    };
+    return node_count++;
+}
+
+static void update_interval_stats(Node *node) {
+    if (node->interval_count == 0) {
+        node->mean = DEFAULT_MEAN;
+        node->stddev = DEFAULT_STDDEV;
+        return;
+    }
+
+    double sum = 0.0;
+    for (int i = 0; i < node->interval_count; i++) {
+        sum += node->intervals[i];
+    }
+    node->mean = sum / node->interval_count;
+
+    double squared_difference_sum = 0.0;
+    for (int i = 0; i < node->interval_count; i++) {
+        double difference = node->intervals[i] - node->mean;
+        squared_difference_sum += difference * difference;
+    }
+    node->stddev = sqrt(squared_difference_sum / node->interval_count);
+}
+
+static void add_heartbeat(char name, int arrival_time) {
+    int index = find_or_create_node_index(name);
+    if (index < 0) {
+        return;
+    }
+
+    Node *node = &nodes[index];
+    if (node->has_arrival) {
+        int interval = arrival_time - node->last_arrival_time;
+        if (node->interval_count < MAX_INTERVAL_COUNT) {
+            node->intervals[node->interval_count++] = interval;
         }
+        update_interval_stats(node);
     }
 
-    strcpy(global_nodes[b].status, "suspect");
-    return 0;
+    node->last_arrival_time = arrival_time;
+    node->has_arrival = 1;
 }
 
-void down_node(int node_id){
-    global_nodes[node_id].is_up = 0;
-}
-
-void block_path(int a, int b){
-    // insert b in a's block list
-    global_nodes[a].block_list[global_nodes[a].block_count++] = b;
-    // insert a in b's block list
-    global_nodes[b].block_list[global_nodes[b].block_count++] = a;
-    return;
-}
-
-void print_nodes_status(void){
-    for (int i = 1; i <= global_node_count; i++){
-        printf("%d %s\n", global_nodes[i].id, global_nodes[i].status);
+static double calculate_phi(char name, int current_time) {
+    int index = find_node_index(name);
+    if (index < 0 || !nodes[index].has_arrival) {
+        return 0.0;
     }
-}
 
-void activate_nodes(int range){
-    for (int i = 1; i <= range; i++){
-        strcpy(global_nodes[i].status, "alive");
-        global_nodes[i].block_count = 0;
-        global_nodes[i].is_up = 1;
-        global_nodes[i].id = i;
+    Node *node = &nodes[index];
+    double elapsed = current_time - node->last_arrival_time;
+    if (node->stddev == 0.0) {
+        return 0.0;
     }
-    global_node_count = range;
-    return;
+    return (elapsed - node->mean) / node->stddev;
 }
-
 
 int main(void) {
     char line[1024];
+
     while (fgets(line, sizeof line, stdin)) {
-        if (line[0] == '\n' || line[0] == 0) continue;
-        if(strncmp(line, "NODES", 5) == 0){
-            char* cursor = line + 5;
-            while(isspace((unsigned char)*cursor)) cursor++;
-            int node_count = atoi(cursor);
-            activate_nodes(node_count);
+        char command[16];
+        char name;
+        int timestamp;
+
+        if (sscanf(line, "%15s %c %d", command, &name, &timestamp) != 3) {
+            continue;
         }
-        else if (strncmp(line, "DOWN", 4) == 0){
-            char* cursor = line + 4;
-            while(isspace((unsigned char)*cursor)) cursor++;
-            int node_id = atoi(cursor);
-            down_node(node_id);
-        }
-        else if (strncmp(line, "PING", 4) == 0){
-            char* cursor = line + 4;
-            while(isspace((unsigned char)*cursor)) cursor++;
-            int a = strtol(cursor, &cursor, 10);
-            while(isspace((unsigned char)*cursor)) cursor++;
-            int b = strtol(cursor, &cursor, 10);
-            while(isspace((unsigned char)*cursor)) cursor++;
-            int helper_nodes[MAX_NODE_COUNT];
-            int helper_count = 0;
-            char* node_id_str = strtok(cursor, ",");
-            while(node_id_str != NULL){
-                helper_nodes[helper_count++] = atoi(node_id_str);
-                node_id_str = strtok(NULL, ",");
-            }
-            if(indirect_or_direct_ping(a, b, helper_nodes, helper_count)){
-                printf("alive\n");
-            }
-            else{
-                printf("suspect\n");
-            }
-        }
-        else if (strncmp(line, "BLOCK", 5) == 0){
-            char* cursor = line + 5;
-            while(isspace((unsigned char)*cursor)) cursor++;
-            int a = strtol(cursor, &cursor, 10);
-            while(isspace((unsigned char)*cursor)) cursor++;
-            int b = strtol(cursor, &cursor, 10);
-            block_path(a, b);
-        }
-        else if (strncmp(line, "STATUS", 6) == 0){
-            print_nodes_status();
+
+        if (strcmp(command, "HEARTBEAT") == 0) {
+            add_heartbeat(name, timestamp);
+        } else if (strcmp(command, "PHI") == 0) {
+            printf("phi=%.2f\n", calculate_phi(name, timestamp));
         }
     }
+
     return 0;
 }
